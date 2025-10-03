@@ -156,7 +156,6 @@ public async Task<HttpResponseData> Run(
 [`src/SecondHttpFunction.cs`](./src/SecondHttpFunction.cs)
 ```csharp
 [Function("second_http_function")]
-[ServiceBusOutput("%ServiceBusQueueName%", Connection = "ServiceBusConnection")]
 public async Task<OutputType> Run(
     [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "second_http_function")] HttpRequestData req)
 {
@@ -177,6 +176,14 @@ public async Task<OutputType> Run(
         HttpResponse = httpResponse,
         ServiceBusMessage = queueMessage
     };
+}
+
+public class OutputType
+{
+    [ServiceBusOutput("%ServiceBusQueueName%", Connection = "ServiceBusConnection")]
+    public string? ServiceBusMessage { get; set; }
+
+    public HttpResponseData? HttpResponse { get; set; }
 }
 ```
 

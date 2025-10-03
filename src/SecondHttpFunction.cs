@@ -15,7 +15,6 @@ public class SecondHttpFunction
     }
 
     [Function("second_http_function")]
-    [ServiceBusOutput("%ServiceBusQueueName%", Connection = "ServiceBusConnection")]
     public async Task<OutputType> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "second_http_function")] HttpRequestData req)
     {
