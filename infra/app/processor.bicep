@@ -18,7 +18,7 @@ param identityClientId string = ''
 param deploymentStorageContainerName string
 
 module processor '../core/host/functions-flexconsumption.bicep' = {
-  name: '${serviceName}-functions-python-module'
+  name: '${serviceName}-functions-dotnet-module'
   params: {
     name: name
     location: location
@@ -33,7 +33,6 @@ module processor '../core/host/functions-flexconsumption.bicep' = {
         ServiceBusConnection__credential : 'managedidentity'
         AzureWebJobsStorage__clientId : identityClientId
         ServiceBusQueueName: serviceBusQueueName
-        PYTHON_APPLICATIONINSIGHTS_ENABLE_TELEMETRY: 'true'
       })
     applicationInsightsName: applicationInsightsName
     appServicePlanId: appServicePlanId
