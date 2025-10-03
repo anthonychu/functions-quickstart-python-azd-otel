@@ -67,8 +67,8 @@ module processor './app/processor.bicep' = {
     tags: tags
     applicationInsightsName: monitoring.outputs.name
     appServicePlanId: appServicePlan.outputs.resourceId
-    runtimeName: 'python'
-    runtimeVersion: '3.12'
+    runtimeName: 'dotnet-isolated'
+    runtimeVersion: '8.0'
     storageAccountName: storage.outputs.name
     identityId: processorUserAssignedIdentity.outputs.resourceId
     identityClientId: processorUserAssignedIdentity.outputs.clientId

@@ -6,5 +6,5 @@ metadata:
 services:
   processor:
     project: ./src/
-    language: python
+    language: csharp
     host: function
