@@ -1,19 +1,19 @@
 ---
-description: This end-to-end Python sample demonstrates distributed tracing with OpenTelemetry across multiple Azure Functions in a Flex Consumption plan app with Service Bus integration and virtual network security.
+description: This end-to-end .NET sample demonstrates distributed tracing with OpenTelemetry across multiple Azure Functions in a Flex Consumption plan app with Service Bus integration and virtual network security.
 page_type: sample
 products:
 - azure-functions
 - azure
-urlFragment: functions-quickstart-python-azd-otel
+urlFragment: functions-quickstart-dotnet-azd-otel
 languages:
-- python
+- csharp
 - bicep
 - azdeveloper
 ---
 
-# Azure Functions Python Service Bus Trigger with OpenTelemetry Distributed Tracing using Azure Developer CLI
+# Azure Functions .NET Service Bus Trigger with OpenTelemetry Distributed Tracing using Azure Developer CLI
 
-This template repository contains a Service Bus trigger reference sample for functions written in Python and deployed to Azure using the Azure Developer CLI (`azd`). The sample demonstrates distributed tracing using OpenTelemetry across multiple Azure Functions and includes managed identity and virtual network integration for secure deployment by default. This sample demonstrates these key features:
+This template repository contains a Service Bus trigger reference sample for functions written in C# using .NET 8 isolated worker model and deployed to Azure using the Azure Developer CLI (`azd`). The sample demonstrates distributed tracing using OpenTelemetry across multiple Azure Functions and includes managed identity and virtual network integration for secure deployment by default. This sample demonstrates these key features:
 
 * **Distributed tracing with OpenTelemetry**. The sample shows how to trace requests across multiple Azure Functions using OpenTelemetry integration, providing end-to-end visibility into function execution flows.
 * **Virtual network integration**. The Service Bus that this Flex Consumption app reads events from is secured behind a private endpoint. The function app can read events from it because it is configured with VNet integration. All connections to Service Bus and to the storage account associated with the Flex Consumption app also use managed identity connections instead of connection strings.
@@ -29,12 +29,12 @@ This sample demonstrates distributed tracing across multiple Azure Functions wit
 
 ## Prerequisites
 
-+ [Python 3.11 or later](https://www.python.org/downloads/)
-+ [Azure Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local?tabs=v4%2Clinux%2Cpython%2Cportal%2Cbash#install-the-azure-functions-core-tools)
++ [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
++ [Azure Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local?tabs=v4%2Clinux%2Ccsharp%2Cportal%2Cbash#install-the-azure-functions-core-tools)
 + To use Visual Studio Code to run and debug locally:
   + [Visual Studio Code](https://code.visualstudio.com/)
   + [Azure Functions extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azurefunctions)
-  + [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
+  + [C# extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp)
 + [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (for deployment)
 + [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd?tabs=winget-windows%2Cbrew-mac%2Cscript-linux&pivots=os-windows)
 + An Azure subscription with Microsoft.Web and Microsoft.App [registered resource providers](https://learn.microsoft.com/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider)
@@ -46,7 +46,7 @@ You can initialize a project from this `azd` template in one of these ways:
 + Use this `azd init` command from an empty local (root) folder:
 
     ```shell
-    azd init --template functions-quickstart-python-azd-otel
+    azd init --template functions-quickstart-dotnet-azd-otel
     ```
 
     Supply an environment name, such as `flexquickstart` when prompted. In `azd`, the environment is used to maintain a unique deployment context for your app.
@@ -54,8 +54,8 @@ You can initialize a project from this `azd` template in one of these ways:
 + Clone the GitHub template repository locally using the `git clone` command:
 
     ```shell
-    git clone https://github.com/Azure-Samples/functions-quickstart-python-azd-otel.git
-    cd functions-quickstart-python-azd-otel
+    git clone https://github.com/Azure-Samples/functions-quickstart-dotnet-azd-otel.git
+    cd functions-quickstart-dotnet-azd-otel
     ```
 
     You can also clone the repository from your own fork in GitHub.
@@ -69,7 +69,7 @@ You can initialize a project from this `azd` template in one of these ways:
         "IsEncrypted": false,
         "Values": {
             "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-            "FUNCTIONS_WORKER_RUNTIME": "python",
+            "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
             "ServiceBusConnection": "",
             "ServiceBusQueueName": "testqueue"
         }
@@ -79,17 +79,10 @@ You can initialize a project from this `azd` template in one of these ways:
     > [!NOTE]
     > The `ServiceBusConnection` will be empty for local development. You'll need an actual Service Bus connection for full testing, which will be provided after deployment to Azure.
 
-2. (Optional) Create a Python virtual environment and activate it:
+2. Build the project:
 
     ```shell
-    python -m venv .venv
-    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-    ```
-
-3. Install the required Python packages:
-
-    ```shell
-    pip install -r src/requirements.txt
+    dotnet build src/FunctionApp.csproj
     ```
 
 ## Run your app from the terminal
@@ -126,65 +119,78 @@ You can initialize a project from this `azd` template in one of these ways:
 
 ## Source Code
 
-The function app is defined in [`src/function_app.py`](./src/function_app.py) and contains three functions that demonstrate distributed tracing across a complete request flow:
+The function app is defined in the `src` folder and contains three functions that demonstrate distributed tracing across a complete request flow:
 
 ### 1. First HTTP Function
-```python
-@app.function_name("first_http_function")
-@app.route(route="first_http_function", auth_level=func.AuthLevel.ANONYMOUS)
-def first_http_function(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function (first) processed a request.')
-    
-    # Call the second function
-    base_url = f"{req.url.split('/api/')[0]}/api"
-    second_function_url = f"{base_url}/second_http_function"
-    
-    response = requests.get(second_function_url)
-    second_function_result = response.text
-    
-    result = {
-        "message": "Hello from the first function!",
-        "second_function_response": second_function_result
-    }
-    
-    return func.HttpResponse(
-        json.dumps(result),
-        status_code=200,
-        mimetype="application/json"
-    )
+[`src/FirstHttpFunction.cs`](./src/FirstHttpFunction.cs)
+```csharp
+[Function("first_http_function")]
+public async Task<HttpResponseData> Run(
+    [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "first_http_function")] HttpRequestData req)
+{
+    _logger.LogInformation("C# HTTP trigger function (first) processed a request.");
+
+    // Call the second function
+    var baseUrl = $"{req.Url.Scheme}://{req.Url.Authority}/api";
+    var secondFunctionUrl = $"{baseUrl}/second_http_function";
+
+    var httpClient = _httpClientFactory.CreateClient();
+    var response = await httpClient.GetAsync(secondFunctionUrl);
+    var secondFunctionResult = await response.Content.ReadAsStringAsync();
+
+    var result = new
+    {
+        message = "Hello from the first function!",
+        second_function_response = secondFunctionResult
+    };
+
+    var httpResponse = req.CreateResponse(HttpStatusCode.OK);
+    httpResponse.Headers.Add("Content-Type", "application/json");
+    await httpResponse.WriteStringAsync(JsonSerializer.Serialize(result));
+
+    return httpResponse;
+}
 ```
 
 ### 2. Second HTTP Function
-```python
-@app.function_name("second_http_function")
-@app.route(route="second_http_function", auth_level=func.AuthLevel.ANONYMOUS)
-@app.service_bus_queue_output(arg_name="outputsbmsg", queue_name="%ServiceBusQueueName%",
-                              connection="ServiceBusConnection")
-def second_http_function(req: func.HttpRequest, outputsbmsg: func.Out[str]) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function (second) processed a request.')
+[`src/SecondHttpFunction.cs`](./src/SecondHttpFunction.cs)
+```csharp
+[Function("second_http_function")]
+[ServiceBusOutput("%ServiceBusQueueName%", Connection = "ServiceBusConnection")]
+public async Task<OutputType> Run(
+    [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "second_http_function")] HttpRequestData req)
+{
+    _logger.LogInformation("C# HTTP trigger function (second) processed a request.");
 
-    message = "This is the second function responding."
-    
-    # Send a message to the Service Bus queue
-    queue_message = "Message from second HTTP function to trigger ServiceBus queue processing"
-    outputsbmsg.set(queue_message)
-    logging.info('Sent message to ServiceBus queue: %s', queue_message)
-    
-    return func.HttpResponse(
-        message,
-        status_code=200
-    )
+    var message = "This is the second function responding.";
+
+    // Send a message to the Service Bus queue
+    var queueMessage = "Message from second HTTP function to trigger ServiceBus queue processing";
+    _logger.LogInformation("Sent message to ServiceBus queue: {Message}", queueMessage);
+
+    var httpResponse = req.CreateResponse(HttpStatusCode.OK);
+    httpResponse.Headers.Add("Content-Type", "text/plain");
+    await httpResponse.WriteStringAsync(message);
+
+    return new OutputType
+    {
+        HttpResponse = httpResponse,
+        ServiceBusMessage = queueMessage
+    };
+}
 ```
 
 ### 3. Service Bus Queue Trigger
-```python
-@app.service_bus_queue_trigger(arg_name="azservicebus", queue_name="%ServiceBusQueueName%",
-                               connection="ServiceBusConnection") 
-def servicebus_queue_trigger(azservicebus: func.ServiceBusMessage):
-    logging.info('Python ServiceBus Queue trigger start processing a message: %s',
-                azservicebus.get_body().decode('utf-8'))
-    time.sleep(5)
-    logging.info('Python ServiceBus Queue trigger end processing a message')
+[`src/ServiceBusQueueTrigger.cs`](./src/ServiceBusQueueTrigger.cs)
+```csharp
+[Function(nameof(ServiceBusQueueTrigger))]
+public async Task Run(
+    [ServiceBusTrigger("%ServiceBusQueueName%", Connection = "ServiceBusConnection")] string message)
+{
+    _logger.LogInformation("C# ServiceBus Queue trigger start processing a message: {Message}", message);
+    await Task.Delay(5000);
+    _logger.LogInformation("C# ServiceBus Queue trigger end processing a message");
+}
 ```
 
 ### Distributed Tracing Flow
@@ -207,14 +213,18 @@ The function configuration in [`src/host.json`](./src/host.json) enables OpenTel
 {
   "version": "2.0",
   "telemetryMode": "OpenTelemetry",
-  "extensions": {
-    "serviceBus": {
-        "maxConcurrentCalls": 10
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "maxTelemetryItemsPerSecond": 20
+      }
     }
   },
-  "extensionBundle": {
-    "id": "Microsoft.Azure.Functions.ExtensionBundle",
-    "version": "[4.*, 5.0.0)"
+  "extensions": {
+    "serviceBus": {
+      "maxConcurrentCalls": 10
+    }
   }
 }
 ```
@@ -222,7 +232,7 @@ The function configuration in [`src/host.json`](./src/host.json) enables OpenTel
 Key configuration aspects:
 + **OpenTelemetry**: `"telemetryMode": "OpenTelemetry"` enables distributed tracing across function calls
 + **Service Bus concurrency**: `maxConcurrentCalls: 10` allows multiple messages to be processed concurrently
-+ **Dependencies**: The `requirements.txt` file includes `azure-monitor-opentelemetry` and `requests` packages for tracing and HTTP calls
++ **Dependencies**: The project uses NuGet packages including `Microsoft.Azure.Functions.Worker.ApplicationInsights` and `Microsoft.Azure.Functions.Worker.Extensions.ServiceBus` for tracing and Service Bus integration
 
 ## Deploy to Azure
 
