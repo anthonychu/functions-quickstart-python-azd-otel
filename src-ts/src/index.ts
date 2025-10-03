@@ -1,4 +1,4 @@
-import { app, output } from '@azure/functions';
+import { app } from '@azure/functions';
 import { firstHttpFunction } from './functions/firstHttpFunction';
 import { secondHttpFunction } from './functions/secondHttpFunction';
 import { serviceBusQueueTrigger } from './functions/serviceBusQueueTrigger';
@@ -15,11 +15,6 @@ app.http('second_http_function', {
     methods: ['GET', 'POST'],
     authLevel: 'anonymous',
     route: 'second_http_function',
-    extraOutputs: [output.serviceBusQueue({
-        queueName: '%ServiceBusQueueName%',
-        connection: 'ServiceBusConnection',
-        name: 'serviceBusOutput'
-    })],
     handler: secondHttpFunction
 });
 

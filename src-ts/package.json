@@ -15,8 +15,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.x",
-    "typescript": "^5.0.0",
-    "azure-functions-core-tools": "^4.x"
+    "typescript": "^5.0.0"
   },
   "main": "dist/src/index.js"
 }
