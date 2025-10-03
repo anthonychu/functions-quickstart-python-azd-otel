@@ -24,6 +24,9 @@ This project is designed to run on your local computer. You can also use GitHub 
 
 This sample demonstrates distributed tracing across multiple Azure Functions with OpenTelemetry integration. The app includes three functions that work together: an HTTP-triggered function that calls a second HTTP function, which then sends a message to Service Bus that triggers a third function. This creates a complete end-to-end tracing scenario that you can observe in Application Insights.
 
+> [!NOTE]
+> A **TypeScript version** of this sample is also available! See [README-TypeScript.md](./README-TypeScript.md) for the TypeScript implementation using Azure Functions v4 programming model. The [COMPARISON.md](./COMPARISON.md) document highlights the key differences between the two implementations.
+
 > [!IMPORTANT]
 > This sample creates several resources. Make sure to delete the resource group after testing to minimize charges!
 
