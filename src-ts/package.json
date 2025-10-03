@@ -1,0 +1,22 @@
+{
+  "name": "functions-quickstart-typescript-azd-otel",
+  "version": "1.0.0",
+  "description": "Azure Functions TypeScript Service Bus Trigger with OpenTelemetry Distributed Tracing",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "prestart": "npm run build",
+    "start": "func start",
+    "test": "echo \"No tests yet\""
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "@azure/monitor-opentelemetry": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "typescript": "^5.0.0",
+    "azure-functions-core-tools": "^4.x"
+  },
+  "main": "dist/src/index.js"
+}

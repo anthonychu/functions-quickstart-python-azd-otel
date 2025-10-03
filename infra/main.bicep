@@ -17,11 +17,14 @@ param location string
 
 param processorServiceName string = ''
 param processorUserAssignedIdentityName string = ''
+param processorTsServiceName string = ''
+param processorTsUserAssignedIdentityName string = ''
 param applicationInsightsName string = ''
 param appServicePlanName string = ''
 param logAnalyticsName string = ''
 param resourceGroupName string = ''
 param storageAccountName string = ''
+param storageAccountNameTs string = ''
 param serviceBusQueueName string = ''
 param serviceBusNamespaceName string = ''
 param vNetName string = ''
@@ -33,11 +36,13 @@ var resourceToken = toLower(uniqueString(subscription().id, environmentName, loc
 var tags = { 'azd-env-name': environmentName }
 // Generate a unique function app name if one is not provided.
 var appName = !empty(processorServiceName) ? processorServiceName : '${abbrs.webSitesFunctions}${resourceToken}'
+var appNameTs = !empty(processorTsServiceName) ? processorTsServiceName : '${abbrs.webSitesFunctions}ts-${resourceToken}'
 // Generate a unique container name that will be used for deployments.
 var deploymentStorageContainerName = 'app-package-${take(appName, 32)}-${take(resourceToken, 7)}'
+var deploymentStorageContainerNameTs = 'app-package-${take(appNameTs, 32)}-${take(resourceToken, 7)}'
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
-var principalIds = !empty(principalId) ? [processorUserAssignedIdentity.outputs.principalId, principalId] : [processorUserAssignedIdentity.outputs.principalId]
+var principalIds = !empty(principalId) ? [processorUserAssignedIdentity.outputs.principalId, processorTsUserAssignedIdentity.outputs.principalId, principalId] : [processorUserAssignedIdentity.outputs.principalId, processorTsUserAssignedIdentity.outputs.principalId]
 
 // Organize resources in a resource group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -52,6 +57,17 @@ module processorUserAssignedIdentity 'br/public:avm/res/managed-identity/user-as
   scope: rg
   params: {
     name: !empty(processorUserAssignedIdentityName) ? processorUserAssignedIdentityName : '${abbrs.managedIdentityUserAssignedIdentities}processor-${resourceToken}'
+    location: location
+    tags: tags
+  }
+}
+
+// User assigned managed identity for TypeScript Function App
+module processorTsUserAssignedIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.4.1' = {
+  name: 'processorTsUserAssignedIdentity'
+  scope: rg
+  params: {
+    name: !empty(processorTsUserAssignedIdentityName) ? processorTsUserAssignedIdentityName : '${abbrs.managedIdentityUserAssignedIdentities}processor-ts-${resourceToken}'
     location: location
     tags: tags
   }
@@ -78,6 +94,30 @@ module processor './app/processor.bicep' = {
     serviceBusQueueName: !empty(serviceBusQueueName) ? serviceBusQueueName : '${abbrs.serviceBusNamespacesQueues}${resourceToken}'
     serviceBusNamespaceFQDN: '${serviceBus.outputs.name}.servicebus.windows.net'
     deploymentStorageContainerName: deploymentStorageContainerName
+  }
+}
+
+// The TypeScript application backend
+module processorTs './app/processor-ts.bicep' = {
+  name: 'processor-ts'
+  scope: rg
+  params: {
+    name: appNameTs
+    location: location
+    tags: tags
+    applicationInsightsName: monitoring.outputs.name
+    appServicePlanId: appServicePlan.outputs.resourceId
+    runtimeName: 'node'
+    runtimeVersion: '20'
+    storageAccountName: storageTs.outputs.name
+    identityId: processorTsUserAssignedIdentity.outputs.resourceId
+    identityClientId: processorTsUserAssignedIdentity.outputs.clientId
+    appSettings: {
+    }
+    virtualNetworkSubnetId: vnetEnabled ? '${serviceVirtualNetwork.?outputs.resourceId}/subnets/app' : ''
+    serviceBusQueueName: !empty(serviceBusQueueName) ? serviceBusQueueName : '${abbrs.serviceBusNamespacesQueues}${resourceToken}'
+    serviceBusNamespaceFQDN: '${serviceBus.outputs.name}.servicebus.windows.net'
+    deploymentStorageContainerName: deploymentStorageContainerNameTs
   }
 }
 
@@ -111,6 +151,36 @@ module storage 'br/public:avm/res/storage/storage-account:0.8.3' = {
   }
 }
 
+// Backing storage for TypeScript Azure functions processor
+module storageTs 'br/public:avm/res/storage/storage-account:0.8.3' = {
+  name: 'storageTs'
+  scope: rg
+  params: {
+    name: !empty(storageAccountNameTs) ? storageAccountNameTs : '${abbrs.storageStorageAccounts}ts${resourceToken}'
+    location: location
+    tags: tags
+    publicNetworkAccess: vnetEnabled ? 'Disabled' : 'Enabled'
+    networkAcls: vnetEnabled ? {
+      defaultAction: 'Deny'
+      bypass: 'None'
+    } : {
+      defaultAction: 'Allow'
+      bypass: 'AzureServices'
+    }
+    blobServices: {
+      containers: [
+        {
+          name: deploymentStorageContainerNameTs
+          publicAccess: 'None'
+        }
+      ]
+    }
+    skuName: 'Standard_LRS'
+    allowSharedKeyAccess: false
+    minimumTlsVersion: 'TLS1_2'
+  }
+}
+
 //Storage Blob Data Owner role, Storage Blob Data Contributor role, Storage Table Data Contributor role
 // Allow access from API to storage account using a managed identity and Storage Blob Data Contributor and Data Owner role
 var roleIds = ['b7e6dc6d-f1e8-4753-8033-0f276bb0955b', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3']
@@ -119,6 +189,17 @@ module storageBlobDataOwnerRoleDefinitionApi 'app/storage-Access.bicep' = [for r
   scope: rg
   params: {
     storageAccountName: storage.outputs.name
+    roleId: roleId
+    principalIds: principalIds
+  }
+}]
+
+// Allow access from TypeScript API to storage account
+module storageTsBlobDataOwnerRoleDefinitionApi 'app/storage-Access.bicep' = [for roleId in roleIds: {
+  name: 'blobDataOwnerTs${roleId}'
+  scope: rg
+  params: {
+    storageAccountName: storageTs.outputs.name
     roleId: roleId
     principalIds: principalIds
   }
@@ -241,6 +322,18 @@ module storagePrivateEndpoint 'app/storage-PrivateEndpoint.bicep' = if (vnetEnab
   }
 }
 
+module storageTsPrivateEndpoint 'app/storage-PrivateEndpoint.bicep' = if (vnetEnabled) {
+  name: 'storageTsPrivateEndpoint'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    virtualNetworkName: !empty(vNetName) ? vNetName : '${abbrs.networkVirtualNetworks}${resourceToken}'
+    subnetName: 'st'
+    resourceName: storageTs.outputs.name
+  }
+}
+
 // Monitor application with Azure Monitor - Log Analytics and Application Insights
 module logAnalytics 'br/public:avm/res/operational-insights/workspace:0.11.1' = {
   name: '${uniqueString(deployment().name, location)}-loganalytics'
@@ -270,3 +363,5 @@ output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
 output SERVICE_PROCESSOR_NAME string = processor.outputs.SERVICE_PROCESSOR_NAME
 output AZURE_FUNCTION_NAME string = processor.outputs.SERVICE_PROCESSOR_NAME
+output SERVICE_PROCESSOR_TS_NAME string = processorTs.outputs.SERVICE_PROCESSOR_NAME
+output AZURE_FUNCTION_TS_NAME string = processorTs.outputs.SERVICE_PROCESSOR_NAME
